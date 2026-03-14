@@ -4,7 +4,6 @@ import { User } from '../user/user.model';
 
 const createBookingIntoDB = async (payload: IBooking) => {
   const user = await User.findById(payload.userId);
-  console.log("ইউজার ডাটা:", user);
   if (!user) throw new Error('User not found!');
 
   const bookingData = {
@@ -13,8 +12,6 @@ const createBookingIntoDB = async (payload: IBooking) => {
     email: user.email,
     phone: user.phone,
   };
-
-  console.log("Saving to Database:", bookingData); // এটি চেক করুন কি সেভ হচ্ছে
 
   const result = await Booking.create(bookingData);
   return result;
