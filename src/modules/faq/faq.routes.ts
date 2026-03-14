@@ -1,8 +1,9 @@
-import express from "express";
-import { FaqControllers } from "./faq.controller";
+import { Router } from 'express';
+import { FaqControllers } from './faq.controller';
 
-const router = express.Router();
+const router = Router();
 
-router.post("/create-faq", FaqControllers.createFaq);
+router.post('/create-faq', FaqControllers.createFaq);
+// router.get('/', FaqControllers.getAllFaqs);
 
 export const FaqRoutes = router;

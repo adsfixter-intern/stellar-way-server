@@ -1,5 +1,5 @@
-import { model, Schema } from "mongoose";
-import { IFaq } from "./faq.interface";
+import { model, Schema } from 'mongoose';
+import { IFaq } from './faq.interface';
 
 const faqSchema = new Schema<IFaq>(
   {
@@ -7,8 +7,8 @@ const faqSchema = new Schema<IFaq>(
     answer: { type: String, required: true },
   },
   {
-    timestamps: true, // এটি অটো createdAt এবং updatedAt তৈরি করবে
-  }
+    timestamps: true,
+  },
 );
 
-export const FaqModel = model<IFaq>('Faq', faqSchema);
+export const Faq = model<IFaq>('Faq', faqSchema);

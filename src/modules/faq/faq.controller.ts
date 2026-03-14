@@ -1,24 +1,31 @@
-import { Request, Response } from "express";
-import { FaqServices } from "./faq.service";
+import httpStatus from 'http-status';
+import catchAsync from '../../app/utils/catchAsync';
+import sendResponse from '../../app/utils/sendResponse';
+import { FaqServices } from './faq.service';
 
-const createFaq = async (req: Request, res: Response) => {
-  try {
-    const faqData = req.body;
-    const result = await FaqServices.createFaqIntoDB(faqData);
+const createFaq = catchAsync(async (req, res) => {
+  const result = await FaqServices.createFaqIntoDB(req.body);
 
-    res.status(201).json({
-      success: true,
-      message: "FAQ created successfully!",
-      data: result,
-    });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: err.message || "Something went wrong",
-    });
-  }
-};
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: 'FAQ created successfully',
+    data: result,
+  });
+});
+
+// const getAllFaqs = catchAsync(async (req, res) => {
+//   const result = await FaqServices.getAllFaqsFromDB();
+
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: 'FAQs fetched successfully',
+//     data: result,
+//   });
+// });
 
 export const FaqControllers = {
   createFaq,
+//   getAllFaqs,
 };
