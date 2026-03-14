@@ -1,0 +1,27 @@
+import express from "express";
+import { UserController } from "./user.controller";
+import { isAuthenticated } from "../../app/middlewares/auth.middleware";
+import { authorizeRoles } from "../../app/middlewares/authorization.middleware";
+
+const router = express.Router();
+
+router.post("/register", UserController.registerUser);
+router.post("/login", UserController.loginUser);
+router.post("/logout", UserController.logoutUser);
+
+router.get(
+  "/admin-dashboard",
+  isAuthenticated, 
+  authorizeRoles("admin"),
+  UserController.getAdminData, 
+);
+
+
+router.post('/forget-password', UserController.forgetPassword);
+router.patch('/reset-password/:token', UserController.resetPassword);
+router.patch('/change-password', isAuthenticated, UserController.changePassword);
+
+
+
+
+export const UserRoutes = router;
