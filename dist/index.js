@@ -18,6 +18,11 @@ app.use(express_1.default.json());
 app.get('/', (req, res) => {
     res.send('stellar way Server is Live!');
 });
+// app.ts এ রাউট মাউন্ট করার আগে
+app.use((req, res, next) => {
+    console.log(`Incoming request: ${req.method} ${req.url}`);
+    next();
+});
 app.use('/api/v1', index_1.default);
 app.use(globalErrorhandler_1.default);
 app.listen(PORT, () => {

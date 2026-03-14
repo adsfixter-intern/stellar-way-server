@@ -18,6 +18,17 @@ const moduleRoutes = [
   { path: "/bookings", route: BookingRoutes },
   { path: "/chefs", route: ChefRoutes },
   { path: "/menu", route: MenuRoutes },
+import {GalleryRoutes} from '../../modules/gallery/gallery.route'
+import { RiderRoutes } from '../../modules/rider/rider.route';
+import { ChatRoutes } from '../../modules/chat/chat.route';
+import { TrackingRoutes } from '../../modules/tracking/tracking.route';
+const router = Router();
+
+const moduleRoutes = [
+  { path: '/menu', route: MenuRoutes },
+  { path: '/bookings', route: BookingRoutes },
+  { path: '/chefs', route: ChefRoutes },
+  // { path: "/menu", route: MenuRoutes },
   { path: "/notifications", route: NotificationRoutes },
   { path: "/messages", route: MessageRoutes },
   { path: "/categories", route: CategoryRoutes },
@@ -26,6 +37,9 @@ const moduleRoutes = [
   { path: "/chats", route: ChatRoutes },
   { path: "/tracking", route: TrackingRoutes },
   { path: "/orders", route: OrderRoutes },
+  { path: '/riders', route: RiderRoutes },
+  { path: "/chats", route: ChatRoutes },       
+  { path: "/tracking", route: TrackingRoutes }
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

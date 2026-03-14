@@ -5,7 +5,6 @@ const booking_model_1 = require("./booking.model");
 const user_model_1 = require("../user/user.model");
 const createBookingIntoDB = async (payload) => {
     const user = await user_model_1.User.findById(payload.userId);
-    console.log("ইউজার ডাটা:", user);
     if (!user)
         throw new Error('User not found!');
     const bookingData = {
@@ -14,7 +13,6 @@ const createBookingIntoDB = async (payload) => {
         email: user.email,
         phone: user.phone,
     };
-    console.log("Saving to Database:", bookingData); // এটি চেক করুন কি সেভ হচ্ছে
     const result = await booking_model_1.Booking.create(bookingData);
     return result;
 };
