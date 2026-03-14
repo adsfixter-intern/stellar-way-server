@@ -1,9 +1,10 @@
+import { Router } from 'express';
+import { MenuRoutes } from '../../modules/menu/menu.route';
+import { UserRoutes } from '../../modules/user/user.route';
 import { BookingRoutes } from "../../modules/booking/booking.route";
 import { ChefRoutes } from "../../modules/chef/chef.route";
 
 import { NotificationRoutes } from "../../modules/notification/notification.route";
-import { Router } from "express";
-import { MenuRoutes } from "../../modules/menu/menu.route";
 import { MessageRoutes } from "../../modules/message/message.route";
 import { CategoryRoutes } from "../../modules/category/category.route";
 import { uploadRoutes } from "../../modules/upload/upload.route";
@@ -17,6 +18,7 @@ const router = Router();
 
 const moduleRoutes = [
   { path: '/menu', route: MenuRoutes },
+  { path: '/auth', route: UserRoutes },
   { path: '/bookings', route: BookingRoutes },
   { path: '/chefs', route: ChefRoutes },
   // { path: "/menu", route: MenuRoutes },

@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import config from './app/config';
 import connectDB from './app/config/db';
 import globalRoutes from './app/routes/index';
@@ -12,6 +13,7 @@ const PORT = config.port;
 
 
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 
 connectDB();
