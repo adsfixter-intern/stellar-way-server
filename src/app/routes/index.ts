@@ -8,6 +8,7 @@ import { uploadRoutes } from '../../modules/upload/upload.route';
 import { FaqRoutes } from '../../modules/faq/faq.routes';
 import path from 'node:path';
 import { FeedbackRoutes } from '../../modules/feedback/feedback.route';
+import { EventRoutes } from "../../modules/event/event.route";
 
 const router = Router();
 
@@ -25,6 +26,10 @@ const moduleRoutes = [
   {
     path: "/feedback",
     route: FeedbackRoutes
+  },
+  {
+    path: "/events",
+    route: EventRoutes
   },
   {path:'/messages', route:MessageRoutes},
   {path: '/categories', route: CategoryRoutes},
