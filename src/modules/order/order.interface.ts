@@ -10,14 +10,13 @@ export interface IOrder {
   address: string;
   items: {
     menuId: Types.ObjectId;
-    quantity: number;
+    quantity: number; // মাস্ট লাগবে
     price: number;
   }[];
   totalPrice: number;
-  paymentStatus: 'pending' | 'paid' | 'failed';
+  paymentStatus: 'unpaid' | 'paid' | 'failed' | 'cancelled'; // আপনি 'unpaid' চেয়েছেন
   deliveryStatus: 'pending' | 'confirmed' | 'cooking' | 'on-the-way' | 'delivered';
   paymentMethod: string;
-  riderId?: Types.ObjectId;
-  otp?: string;
+  transactionId: string; 
   date: Date;
 }
