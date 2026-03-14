@@ -1,4 +1,7 @@
 
+import { BookingRoutes } from '../../modules/booking/booking.route';
+import { ChefRoutes } from '../../modules/chef/chef.route';
+
 import { NotificationRoutes } from "../../modules/notification/notification.route";
 import { Router } from "express";
 import { MenuRoutes } from "../../modules/menu/menu.route";
@@ -9,6 +12,9 @@ import {GalleryRoutes} from '../../modules/gallery/gallery.route'
 const router = Router();
 
 const moduleRoutes = [
+  { path: '/menu', route: MenuRoutes },
+  { path: '/bookings', route: BookingRoutes },
+  { path: '/chefs', route: ChefRoutes },
   { path: "/menu", route: MenuRoutes },
   { path: "/notifications", route: NotificationRoutes },
   { path: "/messages", route: MessageRoutes },
