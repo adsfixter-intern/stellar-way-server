@@ -22,6 +22,9 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/v1', globalRoutes);
 app.use(globalErrorHandler);
 
+
 app.listen(PORT, () => {
   console.log(`Server is running on: http://localhost:${PORT}`);
 });
+
+
