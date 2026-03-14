@@ -4,6 +4,7 @@ const sendResponse = (res, data) => {
     res.status(data.statusCode).json({
         success: data.success,
         message: data.message || 'Success',
+        meta: data.meta || null,
         data: data.data,
     });
 };

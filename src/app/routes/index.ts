@@ -9,6 +9,7 @@ import { MessageRoutes } from "../../modules/message/message.route";
 import { CategoryRoutes } from "../../modules/category/category.route";
 import { uploadRoutes } from "../../modules/upload/upload.route";
 import {GalleryRoutes} from '../../modules/gallery/gallery.route'
+import { RiderRoutes } from '../../modules/rider/rider.route';
 import { ChatRoutes } from '../../modules/chat/chat.route';
 import { TrackingRoutes } from '../../modules/tracking/tracking.route';
 const router = Router();
@@ -17,12 +18,13 @@ const moduleRoutes = [
   { path: '/menu', route: MenuRoutes },
   { path: '/bookings', route: BookingRoutes },
   { path: '/chefs', route: ChefRoutes },
-  { path: "/menu", route: MenuRoutes },
+  // { path: "/menu", route: MenuRoutes },
   { path: "/notifications", route: NotificationRoutes },
   { path: "/messages", route: MessageRoutes },
   { path: "/categories", route: CategoryRoutes },
   { path: "/uploads", route: uploadRoutes },
   { path: "/gallery", route: GalleryRoutes },
+  { path: '/riders', route: RiderRoutes },
   { path: "/chats", route: ChatRoutes },       
   { path: "/tracking", route: TrackingRoutes }
 ];
