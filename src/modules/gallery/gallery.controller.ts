@@ -39,7 +39,6 @@ const getAllGalleryItems = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// ৩. গ্যালারি আইটেম ডিলিট করা
 const deleteGalleryItem = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -47,10 +46,25 @@ const deleteGalleryItem = catchAsync(async (req: Request, res: Response) => {
   if (!item) {
     throw new Error('Item not found!');
   }
-  const publicId = item.image.split('/').pop()?.split('.')[0] || ''; 
-  
+
+  // ১. ইউআরএল থেকে শুধু ফাইলের নাম বের করা
+  const urlParts = item.image.split('/');
+  const fileNameWithExtension = urlParts[urlParts.length - 1]; // যেমন: image.jpg
+  const fileName = fileNameWithExtension.split('.')[0]; // যেমন: image
+
+  // ২. যদি আপনার ক্লাউডিনারি কনফিগারে কোনো ফোল্ডার দেওয়া থাকে (যেমন: 'gallery')
+  // আপনার ক্লাউডিনারি ড্যাশবোর্ডে গিয়ে দেখুন ইমেজটি কোন ফোল্ডারে আছে। 
+  // যদি ফোল্ডারে থাকে তবে এভাবে লিখুন: const publicId = `your_folder_name/${fileName}`;
+  // আর যদি কোনো ফোল্ডার না থাকে, তবে নিচেরটিই ঠিক আছে:
+  const publicId = fileName; 
+
   if (publicId) {
-    await UploadService.deleteImageFromCloudinary(publicId);
+    // এখানে আমরা try-catch ব্যবহার করব যাতে ক্লাউডিনারি থেকে ডিলিট না হলেও DB থেকে ডিলিট হয়
+    try {
+      await UploadService.deleteImageFromCloudinary(publicId);
+    } catch (error) {
+      console.log('Cloudinary delete failed, skipping to DB deletion...');
+    }
   }
 
   await Gallery.findByIdAndDelete(id);
@@ -65,6 +79,6 @@ const deleteGalleryItem = catchAsync(async (req: Request, res: Response) => {
 
 export const GalleryControllers = {
   createGalleryItem,
-  getAllGalleryItems, // এখন এটি স্কোপে আছে
+  getAllGalleryItems,
   deleteGalleryItem,
 };

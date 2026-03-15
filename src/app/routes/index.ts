@@ -20,8 +20,7 @@ import { FaqRoutes } from '../../modules/faq/faq.routes';
 import path from 'node:path';
 import { FeedbackRoutes } from '../../modules/feedback/feedback.route';
 import { EventRoutes } from "../../modules/event/event.route";
-import { Router } from 'express';
-import { MenuRoutes } from '../../modules/menu/menu.route';
+
 import { EventBookingRoutes } from "../../modules/event-booking/eventBooking.route";
 const router = Router();
 
