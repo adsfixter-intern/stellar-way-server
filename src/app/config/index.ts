@@ -8,6 +8,8 @@ const config = {
   port: process.env.PORT,
   serverUrl: process.env.BASE_URL,
   clientUrl: process.env.CLIENT_URL
+  jwt_secret: process.env.JWT_SECRET, 
+  node_env: process.env.NODE_ENV || 'development' 
 };
 
 export default config;
