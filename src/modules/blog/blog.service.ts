@@ -36,25 +36,10 @@ const updateBlog = async (id: string, payload: Partial<IBlog>) => {
 };
 
 const deleteBlog = async (id: string) => {
-  const blog = await Blog.findById(id);
-  
-  if (blog) {
-    if (blog.thumbnail) {
-      await UploadService.deleteImageFromCloudinary(blog.thumbnail);
-    }
-
-    if (blog.contentSections && blog.contentSections.length > 0) {
-      for (const section of blog.contentSections) {
-        if (section.image) {
-          await UploadService.deleteImageFromCloudinary(section.image);
-        }
-      }
-    }
-  }
-
   const result = await Blog.findByIdAndDelete(id);
   return result;
 };
+
 
 export const BlogService = {
   createBlog,
