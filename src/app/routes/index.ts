@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import { MenuRoutes } from '../../modules/menu/menu.route';
-import { UserRoutes } from '../../modules/user/user.route';
+import { Router } from "express";
+import { MenuRoutes } from "../../modules/menu/menu.route";
+import { UserRoutes } from "../../modules/user/user.route";
 import { BookingRoutes } from "../../modules/booking/booking.route";
 import { ChefRoutes } from "../../modules/chef/chef.route";
 
@@ -13,14 +13,16 @@ import { ChatRoutes } from "../../modules/chat/chat.route";
 import { TrackingRoutes } from "../../modules/tracking/tracking.route";
 import { OrderRoutes } from "../../modules/order/order.route";
 import { RiderRoutes } from "../../modules/rider/rider.route";
+import { SettingsRoutes } from "../../modules/settings/settings.route";
+import path from "node:path";
 
 const router = Router();
 
 const moduleRoutes = [
-  { path: '/menu', route: MenuRoutes },
-  { path: '/auth', route: UserRoutes },
-  { path: '/bookings', route: BookingRoutes },
-  { path: '/chefs', route: ChefRoutes },
+  { path: "/menu", route: MenuRoutes },
+  { path: "/auth", route: UserRoutes },
+  { path: "/bookings", route: BookingRoutes },
+  { path: "/chefs", route: ChefRoutes },
   // { path: "/menu", route: MenuRoutes },
   { path: "/notifications", route: NotificationRoutes },
   { path: "/messages", route: MessageRoutes },
@@ -30,9 +32,10 @@ const moduleRoutes = [
   { path: "/chats", route: ChatRoutes },
   { path: "/tracking", route: TrackingRoutes },
   { path: "/orders", route: OrderRoutes },
-  { path: '/riders', route: RiderRoutes },
-  { path: "/chats", route: ChatRoutes },       
-  { path: "/tracking", route: TrackingRoutes }
+  { path: "/riders", route: RiderRoutes },
+  { path: "/chats", route: ChatRoutes },
+  { path: "/tracking", route: TrackingRoutes },
+  { path: "/settings", route: SettingsRoutes },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
