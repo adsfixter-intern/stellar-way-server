@@ -8,7 +8,7 @@ const menuSchema = new Schema<IMenu>({
   price: { type: Number, required: true },
   image: {
     url: { type: String, required: true },
-    publicId: { type: String, required: true }
+    publicId: { type: String, required: false }
   },
   stock: { type: Number, default: 0 },
   chefId: { type: Schema.Types.ObjectId, ref: 'Chef' },
