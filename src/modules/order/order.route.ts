@@ -11,4 +11,5 @@ router.patch('/status/:id', OrderControllers.updatePaymentStatus);
 router.patch('/delivery/:id', OrderControllers.updateDeliveryStatus);
 router.post('/create-stripe-order', OrderControllers.createStripeOrder);
 router.patch('/status-by-transaction/:transactionId', OrderControllers.updatePaymentStatusByTransactionId);
+router.get('/stats/overview', OrderControllers.getOrderStats);
 export const OrderRoutes = router;
