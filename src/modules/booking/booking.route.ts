@@ -4,7 +4,11 @@ import { isAuthenticated } from '../../app/middlewares/auth.middleware';
 
 const router = express.Router();
 
-router.post('/create-booking',isAuthenticated, BookingControllers.createBooking);
+// ১. নতুন রাউট যোগ করুন (এটি অবশ্যই /:id এর উপরে রাখবেন)
+router.post('/my-bookings', BookingControllers.getMyBookings);
+
+// ২. আপনার বিদ্যমান রাউটগুলো
+router.post('/create-booking', BookingControllers.createBooking);
 router.get('/', BookingControllers.getAllBookings);
 router.get('/:id', BookingControllers.getSingleBooking);
 router.patch('/:id', BookingControllers.updateBooking);

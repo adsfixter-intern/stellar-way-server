@@ -62,10 +62,18 @@ const deleteBookingFromDB = async (id: string) => {
   return result;
 };
 
+
+const getMyBookingsFromDB = async (userId: string) => {
+  // ডাটাবেস থেকে শুধু ওই ইউজারের ডাটা ফিল্টার করে আনা
+  const result = await Booking.find({ userId }).sort({ createdAt: -1 });
+  return result;
+};
+
 export const BookingServices = {
   createBookingIntoDB,
   getAllBookingsFromDB,
   getSingleBookingFromDB,
   updateBookingInDB,
   deleteBookingFromDB,
+  getMyBookingsFromDB
 };
