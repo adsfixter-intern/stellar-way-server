@@ -61,25 +61,28 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
   const orderData = req.body;
   const transactionId = `TXN-${Date.now()}`;
 
-  // ১. ডাটাবেজে অর্ডার সেভ করা
+  // ১. ডাটাবেজে অর্ডার সেভ করা (orderId যদি null আসে তবে সেটা বাদ দিয়ে সেভ হবে)
   const finalOrderData = {
     ...orderData,
     transactionId,
     paymentStatus: "unpaid",
   };
 
+  // যদি ফ্রন্টএন্ড থেকে orderId: null আসে, তবে সেটি ডিলিট করে দিন যাতে মঙ্গুজে এরর না দেয়
+  if (!finalOrderData.orderId) delete (finalOrderData as any).orderId;
+
   const result = await Order.create(finalOrderData);
 
-  // ২. SSLCommerz ডাটা অবজেক্ট (Fixed for Sandbox)
-  // স্যান্ডবক্সে amount অবশ্যই string এবং ০.০০ ফরম্যাটে হতে হয়
   const amount = Number(orderData.totalPrice).toFixed(2);
+  
+  // ২. SSLCommerz ডাটা অবজেক্ট
   const data = {
     total_amount: amount,
     currency: "BDT",
     tran_id: transactionId,
-    success_url: `http://localhost:3000/payment/success/${transactionId}`, // Frontend Success Page
-    fail_url: `http://localhost:3000/payment/fail/${transactionId}`, // Frontend Fail Page
-    cancel_url: `http://localhost:3000/payment/cancel/${transactionId}`, // Frontend Cancel Page
+    success_url: `http://localhost:3000/payment/success/${transactionId}`,
+    fail_url: `http://localhost:3000/payment/fail/${transactionId}`,
+    cancel_url: `http://localhost:3000/payment/cancel/${transactionId}`,
     shipping_method: "Courier",
     product_name: "Food Order",
     product_category: "Food",
@@ -87,10 +90,9 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
     cus_name: orderData.customerInfo?.name || "Customer",
     cus_email: orderData.customerInfo?.email || "test@test.com",
     cus_add1: orderData.address || "Dhaka",
-    cus_city: "Dhaka",
+    cus_city: orderData.town || "Dhaka",
     cus_country: "Bangladesh",
     cus_phone: orderData.phone || "01700000000",
-    // শিপিং ডাটা বাধ্যতামূলক
     ship_name: "Customer",
     ship_add1: "Dhaka",
     ship_city: "Dhaka",
@@ -98,14 +100,13 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
     ship_postcode: "1000",
     ship_country: "Bangladesh",
   };
-  // ৩. SSLCommerz ইনিশিয়ালাইজেশন
-  // IS_LIVE=false মানে আপনি স্যান্ডবক্স আইডি ব্যবহার করছেন।
-  // sslcommerz-lts লাইব্রেরিতে স্যান্ডবক্সের জন্য ৩য় প্যারামিটার true দিতে হয়।
-  const isSandbox = process.env.IS_LIVE !== "true";
 
-  const sslcz = new (SSLCommerzPayment as any)(
-    process.env.STORE_ID, // adsfi69a9602610ea7
-    process.env.STORE_PASSWORD, // adsfi69a9602610ea7@ssl
+  // ৩. SSLCommerz ইনিশিয়ালাইজেশন ফিক্স
+  const isSandbox = process.env.IS_LIVE !== "true"; // IS_LIVE=false হলে true হবে
+
+  const sslcz = new SSLCommerzPayment(
+    process.env.STORE_ID as string,
+    process.env.STORE_PASSWORD as string,
     isSandbox,
   );
 
@@ -113,7 +114,6 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
     const apiResponse = await sslcz.init(data);
 
     if (apiResponse?.GatewayPageURL) {
-      // সাকসেস হলে গেটওয়ে লিঙ্ক পাঠানো হচ্ছে
       sendResponse(res, {
         statusCode: 201,
         success: true,
@@ -121,13 +121,11 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
         data: { order: result, paymentUrl: apiResponse.GatewayPageURL },
       });
     } else {
-      // যদি FAILED আসে (আপনার আগের এররটি এখানে ধরা পড়বে)
-      console.error("--- SSLCommerz Detailed Error ---", apiResponse);
-
+      // গেটওয়ে থেকে কোনো এরর আসলে সেটি ব্যাকএন্ড কনসোলে প্রিন্ট হবে
+      console.error("--- SSLCommerz Initialization Failed ---", apiResponse);
       return res.status(400).json({
         success: false,
         message: apiResponse.failedreason || "SSLCommerz validation failed",
-        error: apiResponse,
       });
     }
   } catch (err) {
