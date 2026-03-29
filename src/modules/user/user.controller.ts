@@ -99,11 +99,33 @@ const getAdminData = catchAsync(async (req: Request, res: Response) => {
 });
 
 
+//get users
+
+const getMe = catchAsync(async (req: Request, res: Response) => {
+ 
+  const userId = req.query.userId;
+  console.log(userId);
+
+  const result = await UserService.getMeFromDB(userId as any);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "User profile retrieved successfully",
+    data: result,
+  });
+});
+
+
+
+// user.controller.ts
+
 const updateProfile = catchAsync(async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+ const {userId}=req.body;
+ 
+  
   const updateData = req.body; 
 
- 
   if (!updateData || Object.keys(updateData).length === 0) {
     throw new Error("Please provide data to update your profile.");
   }
@@ -126,5 +148,6 @@ export const UserController = {
   forgetPassword,
   resetPassword,
   changePassword,
-  updateProfile
+  updateProfile,
+  getMe
 };

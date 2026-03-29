@@ -16,9 +16,15 @@ router.get(
   UserController.getAdminData, 
 );
 
+router.get(
+  "/me",
+  // isAuthenticated, 
+  UserController.getMe
+);
+
 router.patch(
   "/update-profile",
-  isAuthenticated, 
+  // isAuthenticated, 
   UserController.updateProfile
 );
 
