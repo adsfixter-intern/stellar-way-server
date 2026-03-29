@@ -3,6 +3,10 @@ import { BookingControllers } from './booking.controller';
 
 const router = express.Router();
 
+// ১. নতুন রাউট যোগ করুন (এটি অবশ্যই /:id এর উপরে রাখবেন)
+router.post('/my-bookings', BookingControllers.getMyBookings);
+
+// ২. আপনার বিদ্যমান রাউটগুলো
 router.post('/create-booking', BookingControllers.createBooking);
 router.get('/', BookingControllers.getAllBookings);
 router.get('/:id', BookingControllers.getSingleBooking);

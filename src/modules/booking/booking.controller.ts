@@ -3,6 +3,29 @@ import sendResponse from '../../app/utils/sendResponse';
 import catchAsync from '../../app/utils/catchAsync';
 import { BookingServices } from './booking.service';
 
+// ১. নির্দিষ্ট ইউজারের বুকিং দেখার জন্য নতুন কন্ট্রোলার
+const getMyBookings = catchAsync(async (req: Request, res: Response) => {
+  const { userId } = req.body; // ফ্রন্টএন্ড থেকে বডিতে পাঠানো আইডি
+
+  if (!userId) {
+    return sendResponse(res, {
+      statusCode: 400,
+      success: false,
+      message: 'User ID is required in request body',
+      data: null,
+    });
+  }
+
+  const result = await BookingServices.getMyBookingsFromDB(userId);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'My bookings retrieved successfully',
+    data: result,
+  });
+});
+
 const createBooking = catchAsync(async (req: Request, res: Response) => {
   const result = await BookingServices.createBookingIntoDB(req.body);
 
@@ -14,9 +37,7 @@ const createBooking = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const getAllBookings = catchAsync(async (req: Request, res: Response) => {
-  // console.log("Query Params:", req.query); 
   const result = await BookingServices.getAllBookingsFromDB(req.query);
   
   sendResponse(res, {
@@ -80,4 +101,5 @@ export const BookingControllers = {
   getSingleBooking,
   updateBooking,
   deleteBooking,
+  getMyBookings, // ২. এটি এখানে এক্সপোর্ট করতে ভুলবেন না
 };
