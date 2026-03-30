@@ -7,6 +7,9 @@ import Stripe from "stripe";
 import { sendEmail } from "../../app/utils/sendEmail";
 import { io } from "../../app/utils/socket";
 import { Notification } from "../notification/notification.model";
+import { model } from "mongoose";
+import { Rider } from "../rider/rider.model";
+import { User } from "../user/user.model";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 
@@ -41,27 +44,34 @@ const getAllOrders = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getMyOrders = catchAsync(async (req: Request, res: Response) => {
-  const { email } = req.params;
+export const getMyOrders = async (req: Request, res: Response) => {
+  try {
+    const userEmail = req.params.email as string;
+    
+    const orders = await Order.find({ 
+      "customerInfo.email": userEmail 
+    } as any)
+      .populate({
+        path: "riderId",
+        select: "lastLocation userId phoneNumber status",
+        populate: { 
+          path: "userId", 
+          select: "name image" 
+        }
+      })
+      .sort({ createdAt: -1 });
 
-  if (!email) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email is required" });
+    res.status(200).json({ 
+      success: true, 
+      data: orders 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
-
-  // ExactOptionalPropertyTypes এরর এড়াতে টাইপ কাস্টিং করা হয়েছে
-  const result = await Order.find({
-    "customerInfo.email": email as string,
-  }).sort({ createdAt: -1 });
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: "Your orders fetched successfully!",
-    data: result,
-  });
-});
+};
 
 const createOrder = catchAsync(async (req: Request, res: Response) => {
   const orderData = req.body;
@@ -192,59 +202,73 @@ const createStripeOrder = catchAsync(async (req: Request, res: Response) => {
 
 export const updateDeliveryStatus = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // Order ID
-    const { status, riderId, riderName } = req.body;
+    const { id } = req.params; 
+    const { status, riderId, riderName, currentLocation, otp } = req.body; 
 
-    const order: any = await Order.findByIdAndUpdate(
+
+    const orderExists: any = await Order.findById(id);
+    if (!orderExists) return res.status(404).json({ success: false, message: "Order not found" });
+
+
+    if (status === 'delivered') {
+      if (!otp) {
+        return res.status(400).json({ success: false, message: "OTP is required to complete delivery" });
+      }
+      
+      if (orderExists.deliveryOTP !== otp) {
+        return res.status(400).json({ success: false, message: "Invalid OTP! Delivery could not be completed." });
+      }
+    }
+
+
+    const updatedOrder: any = await Order.findByIdAndUpdate(
       id,
       { 
         deliveryStatus: status, 
         riderId: riderId,
       },
-      { 
-        new: true,
-        runValidators: true 
-      }
+      { new: true }
     ).populate("customerInfo.user"); 
 
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
-
-
-    const io = req.app.get("socketio");
+    const socketio = req.app.get("socketio");
     
   
-    const targetUserId = order.customerInfo?.user?._id || order.customerInfo?.user;
+    const targetUserId = updatedOrder.customerInfo?.user?._id || updatedOrder.customerInfo?.user;
+    if (targetUserId && socketio) {
+      let title = "Order Status Updated";
+      let message = `Your order is now ${status}.`;
 
+      if (status === 'on-the-way') {
+        title = "Rider is on the way! 🛵";
+        message = `Rider ${riderName || 'is'} coming to your location.`;
+      } else if (status === 'delivered') {
+        title = "Order Delivered! 🎉";
+        message = "Enjoy your meal! Thank you for ordering.";
+      }
 
-    if (targetUserId && io) {
-      io.to(targetUserId.toString()).emit("new-notification", {
-        title: status === 'on-the-way' ? "Order Picked Up! 🛵" : "Delivery Status Update",
-        message: `Rider ${riderName || 'Someone'} is ${status === 'on-the-way' ? 'on the way with' : 'updating'} your meal.`,
+      socketio.to(targetUserId.toString()).emit("new-notification", {
+        title,
+        message,
         status: "unread",
-        createdAt: new Date()
       });
     }
-    if (io) {
-      io.to(id).emit("location-updates", {
+
+ 
+    if (socketio) {
+      socketio.to(id).emit("location-updates", {
         status: status,
-        riderName: riderName
+        riderName: riderName,
+        currentLocation: currentLocation
       });
     }
 
-    res.status(200).json({
-      success: true,
-      message: `Order status updated to ${status}`,
-      data: order
+    res.status(200).json({ 
+      success: true, 
+      message: status === 'delivered' ? "Order delivered successfully!" : `Status: ${status}`, 
+      data: updatedOrder 
     });
-
   } catch (error: any) {
-    console.error("Update Status Error:", error.message);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Something went wrong" 
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -408,7 +432,7 @@ const getOrderStats = catchAsync(async (req: Request, res: Response) => {
     revenueTrend: calculateTrend(lastMonth.revenue, prevMonth.revenue),
     totalPendingOrders: current.totalPendingOrders,
     pendingTrend: 0,
-    salesChartData // এই ডাটাটি আপনার চার্টে বসবে
+    salesChartData 
   };
 
   sendResponse(res, {
@@ -448,36 +472,84 @@ const paymentCancelled = catchAsync(async (req: Request, res: Response) => {
 });
 
 
+
 export const getRiderStatsAndOrders = async (req: Request, res: Response) => {
   try {
     const { email } = req.params;
-    const completedOrders = await Order.find({ 
-      "riderId.email": email, 
-      deliveryStatus: "delivered" 
-    });
 
-    const totalEarnings = completedOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+  
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ 
+        success: false, 
+        message: "A valid email string is required" 
+      });
+    }
+
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found with this email" 
+      });
+    }
+
+   
+    const riderProfile = await Rider.findOne({ userId: user._id });
+    if (!riderProfile) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Rider profile not found for this user account" 
+      });
+    }
+
+    const riderId = riderProfile._id;
+
+
+    const myAcceptedOrders = await Order.find({ riderId })
+      .populate("customerInfo.user")
+      .sort({ updatedAt: -1 });
+
+
+    const completedOrders = myAcceptedOrders.filter(
+      (o) => o.deliveryStatus === 'delivered'
+    );
+    
+    const totalEarnings = completedOrders.reduce(
+      (sum, order) => sum + (order.totalPrice || 0), 0
+    );
+    
     const completedCount = completedOrders.length;
-    const pendingCount = await Order.countDocuments({ 
-      "riderId.email": email, 
-      deliveryStatus: "on-the-way" 
-    });
+    
+
+    const pendingCount = myAcceptedOrders.filter(
+      (o) => o.deliveryStatus === 'on-the-way'
+    ).length;
+
+
     const availableOrders = await Order.find({ 
-      deliveryStatus: "preparing",
-      paymentStatus: "paid" 
+      deliveryStatus: { $in: ["confirmed", "cooking", "preparing"] }, 
+      paymentStatus: "paid",
+      riderId: null 
     }).sort({ createdAt: -1 });
 
-    res.status(200).json({
+    
+    return res.status(200).json({
       success: true,
       data: {
         totalEarnings,
         completedCount,
         pendingCount,
-        availableOrders
+        availableOrders,     
+        myAcceptedOrders     
       }
     });
+    
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      message: error.message || "Internal Server Error" 
+    });
   }
 };
 

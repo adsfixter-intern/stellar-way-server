@@ -28,7 +28,8 @@ connectDB();
 const server = createServer(app);
 
 
-setupSocket(server);
+const io = setupSocket(server);
+app.set("socketio", io);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('stellar way Server is Live!');
