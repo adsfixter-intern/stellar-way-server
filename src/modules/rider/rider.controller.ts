@@ -7,16 +7,42 @@ import { Tracking } from "../tracking/tracking.model";
 import { Order } from "../order/order.model";
 
 
+// const applyRider = catchAsync(async (req: Request, res: Response) => {
+
+
+//   const userId = (req as any).user?.id;
+
+//   if (!userId) {
+//     throw new Error("User authentication failed! Token might be missing.");
+//   }
+
+
+//   const result = await RiderServices.applyForRiderIntoDB({
+//     ...req.body,
+//     userId,
+//   });
+
+//   sendResponse(res, {
+//     statusCode: 201,
+//     success: true,
+//     message: "Rider application submitted successfully! Waiting for admin approval.",
+//     data: result,
+//   });
+// });
+
 const applyRider = catchAsync(async (req: Request, res: Response) => {
-
-
-  const userId = (req as any).user?.id;
+ 
+  const userId = req.body.userId 
 
   if (!userId) {
-    throw new Error("User authentication failed! Token might be missing.");
+
+    return res.status(401).json({
+      success: false,
+      message: "User identity not found! Please login again.",
+    });
   }
 
-
+  
   const result = await RiderServices.applyForRiderIntoDB({
     ...req.body,
     userId,
@@ -25,11 +51,10 @@ const applyRider = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: 201,
     success: true,
-    message: "Rider application submitted successfully! Waiting for admin approval.",
+    message: "Rider application submitted successfully!",
     data: result,
   });
 });
-
 
 const approveRider = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -92,6 +117,20 @@ const deleteRider = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// rider.controller.ts
+
+const rejectRider = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await RiderServices.rejectRiderFromDB(id as any);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Rider application rejected successfully",
+    data: result,
+  });
+});
+
 export const RiderControllers = {
   applyRider,
   approveRider,
@@ -99,4 +138,5 @@ export const RiderControllers = {
   getSingleRider,
   updateRider,
   deleteRider,
+  rejectRider
 };
