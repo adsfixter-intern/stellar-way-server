@@ -5,6 +5,11 @@ import { Order } from "./order.model";
 import SSLCommerzPayment from "sslcommerz-lts";
 import Stripe from "stripe";
 import { sendEmail } from "../../app/utils/sendEmail";
+import { io } from "../../app/utils/socket";
+import { Notification } from "../notification/notification.model";
+import { model } from "mongoose";
+import { Rider } from "../rider/rider.model";
+import { User } from "../user/user.model";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 
@@ -39,27 +44,34 @@ const getAllOrders = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getMyOrders = catchAsync(async (req: Request, res: Response) => {
-  const { email } = req.params;
+export const getMyOrders = async (req: Request, res: Response) => {
+  try {
+    const userEmail = req.params.email as string;
+    
+    const orders = await Order.find({ 
+      "customerInfo.email": userEmail 
+    } as any)
+      .populate({
+        path: "riderId",
+        select: "lastLocation userId phoneNumber status",
+        populate: { 
+          path: "userId", 
+          select: "name image" 
+        }
+      })
+      .sort({ createdAt: -1 });
 
-  if (!email) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email is required" });
+    res.status(200).json({ 
+      success: true, 
+      data: orders 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
-
-  // ExactOptionalPropertyTypes এরর এড়াতে টাইপ কাস্টিং করা হয়েছে
-  const result = await Order.find({
-    "customerInfo.email": email as string,
-  }).sort({ createdAt: -1 });
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: "Your orders fetched successfully!",
-    data: result,
-  });
-});
+};
 
 const createOrder = catchAsync(async (req: Request, res: Response) => {
   const orderData = req.body;
@@ -186,25 +198,82 @@ const createStripeOrder = catchAsync(async (req: Request, res: Response) => {
     },
   });
 });
-const updateDeliveryStatus = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  const result = await Order.findByIdAndUpdate(
-    id,
-    { deliveryStatus: status },
-    { new: true, runValidators: true },
-  );
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: "Delivery status updated!",
-    data: result,
-  });
-});
 
 
+export const updateDeliveryStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; 
+    const { status, riderId, riderName, currentLocation, otp } = req.body; 
+
+
+    const orderExists: any = await Order.findById(id);
+    if (!orderExists) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    if (status === 'delivered') {
+      if (!otp) return res.status(400).json({ success: false, message: "OTP required" });
+      if (orderExists.deliveryOTP !== otp) {
+        return res.status(400).json({ success: false, message: "Invalid OTP code" });
+      }
+    }
+
+
+    let finalRiderId = orderExists.riderId; 
+    
+   
+    if (riderId) {
+      const riderProfile = await Rider.findOne({ userId: riderId });
+      if (riderProfile) {
+        finalRiderId = riderProfile._id; 
+      }
+    }
+
+
+    const updatedOrder: any = await Order.findByIdAndUpdate(
+      id,
+      { 
+        deliveryStatus: status, 
+        riderId: finalRiderId, 
+      },
+      { new: true }
+    ).populate("customerInfo.user");
+
+    const socketio = req.app.get("socketio");
+    const customerId = updatedOrder.customerInfo?.user?._id || updatedOrder.customerInfo?.user;
+
+    if (socketio) {
+     
+      if (customerId) {
+        let title = "Order Update";
+        let message = `Your order status: ${status}`;
+        if (status === 'on-the-way') {
+          title = "Rider is moving! 🛵";
+          message = `${riderName || 'Rider'} has picked up your order.`;
+        } else if (status === 'delivered') {
+          title = "Order Received! 🎉";
+          message = "Your delivery is complete. Enjoy!";
+        }
+
+        socketio.to(customerId.toString()).emit("new-notification", { title, message, status: "unread" });
+      }
+
+      socketio.to(id).emit("location-updates", {
+        status,
+        riderName,
+        currentLocation
+      });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Order updated successfully", 
+      data: updatedOrder 
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 const updatePaymentStatus = catchAsync(async (req: Request, res: Response) => {
@@ -243,52 +312,56 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 const updatePaymentStatusByTransactionId = catchAsync(
   async (req: Request, res: Response) => {
     const { transactionId } = req.params;
-    const { status } = req.body; 
+    const { status } = req.body;
 
-    const otp = generateOTP(); 
+    const otp = generateOTP();
     let updateData: any = { paymentStatus: status };
-    
+
     if (status === 'paid') {
       updateData.deliveryOTP = otp;
+      updateData.deliveryStatus = 'preparing'; 
     }
 
     const result = await Order.findOneAndUpdate(
       { transactionId: transactionId as string } as any,
       updateData,
       { new: true },
-    );
+    ).populate("customerInfo.user");
 
-    if (!result) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
+    if (!result) return res.status(404).json({ success: false, message: "Order not found" });
 
-    if (status === 'paid' && result.customerInfo?.email) {
-      const otpHtml = `
-        <div style="font-family: sans-serif; text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 20px;">
-          <h2 style="color: #1D3A15;">Payment Successful!</h2>
-          <p>Your order is confirmed. Please use the following OTP for delivery verification:</p>
-          <div style="background: #f3f4f6; padding: 15px; border-radius: 10px; display: inline-block; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: 900; letter-spacing: 10px; color: #1D3A15;">${otp}</span>
-          </div>
-          <p style="color: #666; font-size: 12px;">Give this code to the rider when your food arrives.</p>
-        </div>
-      `;
-
-      try {
-        await sendEmail(result.customerInfo.email, otpHtml, "Your Delivery OTP - Savory Nest");
-      } catch (error) {
-        console.error("OTP Email Error:", error);
+    if (status === 'paid') {
+      const notifTitle = "Order Confirmed! 🎉";
+      const notifMessage = `Payment successful for Order #${result.transactionId.slice(-6)}. OTP: ${otp}.`;
+      
+      if (result.customerInfo?.user) {
+        const notification = await Notification.create({
+          title: notifTitle,
+          message: notifMessage,
+          type: 'order',
+          userId: result.customerInfo.user,
+          status: 'unread'
+        });
+        if (io) io.to(result.customerInfo.user.toString()).emit('new-notification', notification);
       }
+
+      if (io) {
+        io.to("all-riders").emit("new-order-available", {
+          title: "New Order Waiting! 🍔",
+          message: `Order at ${result.address || 'Customer Location'}. Accept now!`,
+          orderId: result._id,
+          transactionId: result.transactionId
+        });
+      }
+      const otpHtml = `<div style="text-align: center;"><h2>OTP: ${otp}</h2></div>`;
+      try { await sendEmail(result.customerInfo.email, otpHtml, "Delivery OTP"); } catch (e) {}
     }
 
-    sendResponse(res, {
-      statusCode: 200,
-      success: true,
-      message: status === 'paid' ? "Payment success and OTP sent!" : "Status updated!",
-      data: result,
-    });
+    sendResponse(res, { statusCode: 200, success: true, message: "Success!", data: result });
   },
 );
+
+
 // admin dashboard
 const getOrderStats = catchAsync(async (req: Request, res: Response) => {
   const now = new Date();
@@ -361,7 +434,7 @@ const getOrderStats = catchAsync(async (req: Request, res: Response) => {
     revenueTrend: calculateTrend(lastMonth.revenue, prevMonth.revenue),
     totalPendingOrders: current.totalPendingOrders,
     pendingTrend: 0,
-    salesChartData // এই ডাটাটি আপনার চার্টে বসবে
+    salesChartData 
   };
 
   sendResponse(res, {
@@ -401,6 +474,61 @@ const paymentCancelled = catchAsync(async (req: Request, res: Response) => {
 });
 
 
+
+export const getRiderStatsAndOrders = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.params;
+
+  
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, message: "Valid email is required" });
+    }
+
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const riderProfile = await Rider.findOne({ userId: user._id });
+    if (!riderProfile) {
+      return res.status(404).json({ success: false, message: "Rider profile not found" });
+    }
+
+    const riderProfileId = riderProfile._id;
+
+
+    const myAcceptedOrders = await Order.find({ riderId: riderProfileId })
+      .populate("customerInfo.user")
+      .sort({ updatedAt: -1 });
+
+   
+    const completedOrders = myAcceptedOrders.filter(o => o.deliveryStatus === 'delivered');
+    const totalEarnings = completedOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+    const completedCount = completedOrders.length;
+    const pendingCount = myAcceptedOrders.filter(o => o.deliveryStatus === 'on-the-way').length;
+
+  
+    const availableOrders = await Order.find({ 
+      deliveryStatus: { $in: ["confirmed", "cooking", "preparing"] }, 
+      paymentStatus: "paid",
+      riderId: null 
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalEarnings,
+        completedCount,
+        pendingCount,
+        availableOrders,     
+        myAcceptedOrders     
+      }
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 export const OrderControllers = {
   createOrder,
   createStripeOrder,
@@ -412,5 +540,6 @@ export const OrderControllers = {
   updatePaymentStatusByTransactionId,
   getOrderStats,
   paymentFailed,
-  paymentCancelled
+  paymentCancelled,
+  getRiderStatsAndOrders
 };

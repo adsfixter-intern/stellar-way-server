@@ -167,6 +167,19 @@ const changePasswordIntoDB = async (userId: string, payload: any) => {
   return null;
 };
 
+
+//get users
+
+const getMeFromDB = async (userId: string) => {
+  const result = await User.findById(userId);
+  if (!result) {
+    throw new Error("User not found!");
+  }
+  return result;
+};
+
+
+
 const updateProfileInDB = async (userId: string, payload: Partial<IUser>) => {
 
   if (!payload) {
@@ -195,5 +208,6 @@ export const UserService = {
   forgetPasswordIntoDB,
   resetPasswordIntoDB,
   changePasswordIntoDB,
-  updateProfileInDB
+  updateProfileInDB,
+  getMeFromDB
 };
