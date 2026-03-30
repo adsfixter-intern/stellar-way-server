@@ -94,6 +94,25 @@ const deleteRiderFromDB = async (id: string) => {
   }
 };
 
+// rider.service.ts
+
+const rejectRiderFromDB = async (id: string) => {
+
+  const isRiderExist = await Rider.findById(id);
+
+  if (!isRiderExist) {
+    throw new Error("Rider not found!");
+  }
+
+  const result = await Rider.findByIdAndUpdate(
+    id,
+    { status: 'rejected' },
+    { new: true, runValidators: true }
+  );
+
+  return result;
+};
+
 export const RiderServices = {
   applyForRiderIntoDB,
   approveRiderInDB,
@@ -101,4 +120,5 @@ export const RiderServices = {
   getSingleRiderFromDB,
   updateRiderInDB,
   deleteRiderFromDB,
+  rejectRiderFromDB 
 };
