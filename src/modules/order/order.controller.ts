@@ -207,16 +207,25 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
 
 
     const orderExists: any = await Order.findById(id);
-    if (!orderExists) return res.status(404).json({ success: false, message: "Order not found" });
-
+    if (!orderExists) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
 
     if (status === 'delivered') {
-      if (!otp) {
-        return res.status(400).json({ success: false, message: "OTP is required to complete delivery" });
-      }
-      
+      if (!otp) return res.status(400).json({ success: false, message: "OTP required" });
       if (orderExists.deliveryOTP !== otp) {
-        return res.status(400).json({ success: false, message: "Invalid OTP! Delivery could not be completed." });
+        return res.status(400).json({ success: false, message: "Invalid OTP code" });
+      }
+    }
+
+
+    let finalRiderId = orderExists.riderId; 
+    
+   
+    if (riderId) {
+      const riderProfile = await Rider.findOne({ userId: riderId });
+      if (riderProfile) {
+        finalRiderId = riderProfile._id; 
       }
     }
 
@@ -225,53 +234,46 @@ export const updateDeliveryStatus = async (req: Request, res: Response) => {
       id,
       { 
         deliveryStatus: status, 
-        riderId: riderId,
+        riderId: finalRiderId, 
       },
       { new: true }
-    ).populate("customerInfo.user"); 
+    ).populate("customerInfo.user");
 
     const socketio = req.app.get("socketio");
-    
-  
-    const targetUserId = updatedOrder.customerInfo?.user?._id || updatedOrder.customerInfo?.user;
-    if (targetUserId && socketio) {
-      let title = "Order Status Updated";
-      let message = `Your order is now ${status}.`;
+    const customerId = updatedOrder.customerInfo?.user?._id || updatedOrder.customerInfo?.user;
 
-      if (status === 'on-the-way') {
-        title = "Rider is on the way! 🛵";
-        message = `Rider ${riderName || 'is'} coming to your location.`;
-      } else if (status === 'delivered') {
-        title = "Order Delivered! 🎉";
-        message = "Enjoy your meal! Thank you for ordering.";
+    if (socketio) {
+     
+      if (customerId) {
+        let title = "Order Update";
+        let message = `Your order status: ${status}`;
+        if (status === 'on-the-way') {
+          title = "Rider is moving! 🛵";
+          message = `${riderName || 'Rider'} has picked up your order.`;
+        } else if (status === 'delivered') {
+          title = "Order Received! 🎉";
+          message = "Your delivery is complete. Enjoy!";
+        }
+
+        socketio.to(customerId.toString()).emit("new-notification", { title, message, status: "unread" });
       }
 
-      socketio.to(targetUserId.toString()).emit("new-notification", {
-        title,
-        message,
-        status: "unread",
-      });
-    }
-
- 
-    if (socketio) {
       socketio.to(id).emit("location-updates", {
-        status: status,
-        riderName: riderName,
-        currentLocation: currentLocation
+        status,
+        riderName,
+        currentLocation
       });
     }
 
     res.status(200).json({ 
       success: true, 
-      message: status === 'delivered' ? "Order delivered successfully!" : `Status: ${status}`, 
+      message: "Order updated successfully", 
       data: updatedOrder 
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 
 const updatePaymentStatus = catchAsync(async (req: Request, res: Response) => {
@@ -479,61 +481,40 @@ export const getRiderStatsAndOrders = async (req: Request, res: Response) => {
 
   
     if (!email || typeof email !== 'string') {
-      return res.status(400).json({ 
-        success: false, 
-        message: "A valid email string is required" 
-      });
+      return res.status(400).json({ success: false, message: "Valid email is required" });
     }
 
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found with this email" 
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-   
     const riderProfile = await Rider.findOne({ userId: user._id });
     if (!riderProfile) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Rider profile not found for this user account" 
-      });
+      return res.status(404).json({ success: false, message: "Rider profile not found" });
     }
 
-    const riderId = riderProfile._id;
+    const riderProfileId = riderProfile._id;
 
 
-    const myAcceptedOrders = await Order.find({ riderId })
+    const myAcceptedOrders = await Order.find({ riderId: riderProfileId })
       .populate("customerInfo.user")
       .sort({ updatedAt: -1 });
 
-
-    const completedOrders = myAcceptedOrders.filter(
-      (o) => o.deliveryStatus === 'delivered'
-    );
-    
-    const totalEarnings = completedOrders.reduce(
-      (sum, order) => sum + (order.totalPrice || 0), 0
-    );
-    
+   
+    const completedOrders = myAcceptedOrders.filter(o => o.deliveryStatus === 'delivered');
+    const totalEarnings = completedOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
     const completedCount = completedOrders.length;
-    
+    const pendingCount = myAcceptedOrders.filter(o => o.deliveryStatus === 'on-the-way').length;
 
-    const pendingCount = myAcceptedOrders.filter(
-      (o) => o.deliveryStatus === 'on-the-way'
-    ).length;
-
-
+  
     const availableOrders = await Order.find({ 
       deliveryStatus: { $in: ["confirmed", "cooking", "preparing"] }, 
       paymentStatus: "paid",
       riderId: null 
     }).sort({ createdAt: -1 });
 
-    
     return res.status(200).json({
       success: true,
       data: {
@@ -544,15 +525,10 @@ export const getRiderStatsAndOrders = async (req: Request, res: Response) => {
         myAcceptedOrders     
       }
     });
-    
   } catch (error: any) {
-    return res.status(500).json({ 
-      success: false, 
-      message: error.message || "Internal Server Error" 
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
-
 export const OrderControllers = {
   createOrder,
   createStripeOrder,
