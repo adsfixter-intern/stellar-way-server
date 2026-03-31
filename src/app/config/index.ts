@@ -5,9 +5,9 @@ dotenv.config({ path: path.join(process.cwd(), ".env") });
 
 const config = {
   mongo_db_url: process.env.MONGO_DB_URL,
-  port: process.env.PORT,
- serverUrl: process.env.SERVER_URL || 'http://localhost:8000',
-  clientUrl: process.env.clientUrl || 'http://localhost:3000',
+  port: process.env.PORT || 5000,
+ serverUrl: process.env.serverUrl || 'https://stellar-way-server-production.up.railway.app',
+  clientUrl: process.env.clientUrl || 'https://stellar-way.vercel.app',
   jwt_secret: process.env.JWT_SECRET,
   node_env: process.env.NODE_ENV || "development",
   store_id: process.env.STORE_ID,
