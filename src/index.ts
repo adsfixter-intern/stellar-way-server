@@ -13,11 +13,21 @@ const PORT = config.port;
 
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://stellar-way.vercel.app'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:3000', 
+      'https://stellar-way.vercel.app'
+    ];
+    // origin undefined হলে (যেমন Postman বা সার্ভার-টু-সার্ভার) অনুমতি দেওয়া হচ্ছে
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // OPTIONS যোগ করা হয়েছে
   credentials: true
 }));
-
 
 app.use(cookieParser());
 app.use(express.json());
