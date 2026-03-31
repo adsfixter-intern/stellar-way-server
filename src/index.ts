@@ -13,12 +13,12 @@ const PORT = config.port;
 
 
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
+  origin:  
     'https://stellar-way.vercel.app'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  credentials: true
+  ,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'] 
 }));
 
 
