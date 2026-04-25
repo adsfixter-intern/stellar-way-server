@@ -25,6 +25,7 @@ import { EventRoutes } from "../../modules/event/event.route";
 import { EventBookingRoutes } from "../../modules/event-booking/eventBooking.route";
 import { AnalyticsRoutes } from "../../modules/analytics/analytics.route";
 import { TableRoutes } from "../../modules/table/table.route";
+import { RestaurantStatsRoutes } from "../../modules/restaurantStats/restaurantStats.route";
 
 const router = Router();
 
@@ -79,6 +80,7 @@ const moduleRoutes = [
     route: AnalyticsRoutes,
   },
   { path: "/table", route: TableRoutes },
+  { path: "/stats", route: RestaurantStatsRoutes },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
