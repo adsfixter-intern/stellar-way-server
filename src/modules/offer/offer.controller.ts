@@ -13,6 +13,16 @@ const createOffer = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const allOffers = catchAsync(async (req: Request, res: Response) => {
+  const result = await OfferService.getAllOffersFromDB();
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "All offers retrieved!",
+    data: result,
+  });
+});
+
 const getActiveOffers = catchAsync(async (req: Request, res: Response) => {
   const result = await OfferService.getActiveOffersFromDB();
   sendResponse(res, {
@@ -22,7 +32,6 @@ const getActiveOffers = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
-
 
 const deleteOffer = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -36,8 +45,22 @@ const deleteOffer = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateOffer = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await OfferService.updateOfferIntoDB(id as string, req.body);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Offer updated successfully!",
+    data: result,
+  });
+});
+
 export const OfferController = {
   createOffer,
   getActiveOffers,
-  deleteOffer
+  deleteOffer,
+  updateOffer,
+  allOffers,
 };
