@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.get("/active", OfferController.getActiveOffers);
 
+router.get("/", OfferController.allOffers);
+
 router.post(
   "/create",
   isAuthenticated,
@@ -19,6 +21,12 @@ router.delete(
   isAuthenticated,
   authorizeRoles("admin"),
   OfferController.deleteOffer,
+);
+router.patch(
+  "/:id",
+  isAuthenticated,
+  authorizeRoles("admin"),
+  OfferController.updateOffer,
 );
 
 export const OfferRoutes = router;
