@@ -11,6 +11,7 @@ import { model } from "mongoose";
 import { Rider } from "../rider/rider.model";
 import { User } from "../user/user.model";
 import config from "../../app/config";
+import { Menu } from "../menu/menu.model";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 const getAllOrders = catchAsync(async (req: Request, res: Response) => {
@@ -83,14 +84,13 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
   const orderData = req.body;
   const transactionId = `TXN-${Date.now()}`;
 
-  // ১. ডাটাবেজে অর্ডার সেভ করা (orderId যদি null আসে তবে সেটা বাদ দিয়ে সেভ হবে)
   const finalOrderData = {
     ...orderData,
     transactionId,
     paymentStatus: "unpaid",
   };
 
-  // যদি ফ্রন্টএন্ড থেকে orderId: null আসে, তবে সেটি ডিলিট করে দিন যাতে মঙ্গুজে এরর না দেয়
+
   if (!finalOrderData.orderId) delete (finalOrderData as any).orderId;
 
   const result = await Order.create(finalOrderData);
@@ -124,7 +124,7 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
   };
 
   // ৩. SSLCommerz ইনিশিয়ালাইজেশন ফিক্স
-  const isSandbox = process.env.IS_LIVE !== "true"; // IS_LIVE=false হলে true হবে
+  const isSandbox = process.env.IS_LIVE !== "true"; 
 
   const sslcz = new SSLCommerzPayment(
     process.env.STORE_ID as string,
@@ -143,7 +143,6 @@ const createOrder = catchAsync(async (req: Request, res: Response) => {
         data: { order: result, paymentUrl: apiResponse.GatewayPageURL },
       });
     } else {
-      // গেটওয়ে থেকে কোনো এরর আসলে সেটি ব্যাকএন্ড কনসোলে প্রিন্ট হবে
       console.error("--- SSLCommerz Initialization Failed ---", apiResponse);
       return res.status(400).json({
         success: false,
@@ -342,7 +341,23 @@ const updatePaymentStatusByTransactionId = catchAsync(
         .status(404)
         .json({ success: false, message: "Order not found" });
 
-    if (status === "paid") {
+    if (status === "paid" && result.items && result.items.length > 0) {
+      try {
+        const stockUpdates = result.items.map((item: any) => {
+          return {
+            updateOne: {
+              filter: { _id: item.menuId },
+              update: { $inc: { stock: -item.quantity } }, 
+            },
+          };
+        });
+
+
+        await Menu.bulkWrite(stockUpdates);
+      } catch (stockError) {
+        console.error("Stock update failed:", stockError);
+      }
+
       const notifTitle = "Order Confirmed! 🎉";
       const notifMessage = `Payment successful for Order #${result.transactionId.slice(-6)}. OTP: ${otp}.`;
 
@@ -369,6 +384,7 @@ const updatePaymentStatusByTransactionId = catchAsync(
           transactionId: result.transactionId,
         });
       }
+
       const otpHtml = `<div style="text-align: center;"><h2>OTP: ${otp}</h2></div>`;
       try {
         await sendEmail(result.customerInfo.email, otpHtml, "Delivery OTP");
